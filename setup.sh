@@ -82,7 +82,7 @@ if [ -f /etc/os-release ]; then
       install_neovim
       exec zsh
       ;;
-    arch|endeavourOS)
+    arch|endeavouros)
       echo "Detected Arch-based system."
       install_arch
       install_shell
