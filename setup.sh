@@ -1,82 +1,100 @@
-export TERM="xterm-256color"
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
+#! /bin/bash
 
-Add neovim to path
-export PATH="$PATH:/opt/nvim/"
+# List of applications to get and install
+coreapps=("autoconf" "cmake" "curl" "fuse" "git" "make" "nano" "python3" "tmux" "vim" "wget" "zsh")
+debapps=("build-essential" "ninja-build" "gettext")
+archapps=("base-devel" "ninja")
 
-# Path to your oh-my-zsh installation.
-export ZSH="$HOME/.oh-my-zsh"
-export ZPLUG_HOME=$HOME/.zplug
 
-# Set name of the theme to load. Optionally, if you set this to "random"
-# it'll load a random theme each time that oh-my-zsh is loaded.
-# See https://github.com/robbyrussell/oh-my-zsh/wiki/Themes
 
-ZSH_THEME="powerlevel10k/powerlevel10k"
-POWERLEVEL9K_MODE='nerdfont-complete'
-
-#POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status command_execution_time)
-#POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(ssh context dir vcs)
-#POWERLEVEL9K_PROMPT_ON_NEWLINE=false
-
-# Uncomment the following line to disable bi-weekly auto-update checks.
-# DISABLE_AUTO_UPDATE="true"
-
-# Uncomment the following line to display red dots whilst waiting for completion.
-# COMPLETION_WAITING_DOTS="true"
-
-# Uncomment the following line if you want to change the command execution time
-# stamp shown in the history command output.
-# The optional three formats: "mm/dd/yyyy"|"dd.mm.yyyy"|"yyyy-mm-dd"
-# HIST_STAMPS="mm/dd/yyyy"
-
-# Would you like to use another custom folder than $ZSH/custom?
-# ZSH_CUSTOM=/path/to/new-custom-folder
-
-# ---------------
-# QoL Stuff
-#---------------
-
-# Set vim as the default editor
-export EDITOR='nvim'
-
-# Aliases for convenience
-alias ll='ls -lah'
-alias la='ls -A'
-alias l='ls -CF'
-alias vi='nvim'
-alias svi='sudo nvim'
-
-# Shell history
-HISTSIZE=1000
-SAVEHIST=2000
-HISTFILE=~/.zsh_history
-
-# ---------------
-# Plugins
-#---------------
-
-source $ZSH/oh-my-zsh.sh
-source $ZPLUG_HOME/init.zsh
-
-zplug "plugins/git", from:oh-my-zsh
-zplug "plugins/sudo", from:oh-my-zsh
-zplug "plugins/docker", from:oh-my-zsh
-zplug "plugins/extract", from:oh-my-zsh
-zplug "mafredri/zsh-async", from:github
-zplug "sindresorhus/pure", use:pure.zsh, from:github, as:theme defer:1
-zplug "zsh-users/zsh-completions", as:plugin, defer:2
-zplug "zsh-users/zsh-autosuggestions", as:plugin, defer:2
-zplug "zsh-users/zsh-syntax-highlighting", as:plugin, defer:2
-
-zplug load
-# Install plugins if there are plugins that have not been installed
-
-if ! zplug check --verbose; then
-    printf "Install? [y/N]: "
-    if read -q; then
-        echo; zplug install
+# Function to install packages on Debian-based systems
+install_debian() {
+  local apps=("${coreapps[@]}" "${debapps[@]}")
+  sudo apt-get update 
+  for app in "${apps[@]}"; do
+    if ! dpkg -l | grep -q "^ii\s*${app} "; then
+      echo "${app} is not installed. Installing..."
+      sudo apt-get install -y "${app}"
+    else
+      echo "${app} is already installed."
     fi
-fi
+  done
+  echo "Core applications installed"
+}
 
+# Function to install packages on Arch-based systems
+install_arch() {
+  local apps=("${coreapps[@]}" "${archapps[@]}")
+  for app in "${apps[@]}"; do
+    if ! pacman -Q ${app} &> /dev/null; then
+      echo "${app} is not installed. Installing..."
+      sudo pacman -Syu --noconfirm "${app}"
+    else
+      echo "${app} is already installed."
+    fi
+  done
+  echo "Core applications installed"
+}
+
+# Install and configure shell
+install_shell() {
+  echo "Installing nerd fonts"
+  wget -q --show-progress -N https://github.com/0xType/0xProto/blob/main/fonts/0xProto-Regular.ttf -P ~/.local/share/fonts/
+  wget -q --show-progress -N https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf -P ~/.local/share/fonts/
+  wget -q --show-progress -N https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf -P ~/.local/share/fonts/
+  wget -q --show-progress -N https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf -P ~/.local/share/fonts/
+  wget -q --show-progress -N https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf -P ~/.local/share/fonts/
+  echo "installing OhMyZsh"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  echo "Installing zplug"
+  curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh | zsh
+  echo "Installing PowerLevel10k"
+  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+  mv -n ~/.zshrc ~/.zshrc-backup-$(date +"%Y-%m-%d");
+  cp -n ~/zsh-setup/example.zshrc ~/.zshrc
+}
+
+install_neovim() {
+  echo "Installing Neovim"
+  git clone https://github.com/neovim/neovim.git
+  cd ./neovim
+  rm -r build/  # clear the CMake cache
+  make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$HOME/neovim"
+  make install
+  export PATH="$HOME/neovim/bin:$PATH"
+  echo "Installing labed kickstart.vim"
+  git clone https://github.com/mrtrebuchet/labed-neovim.git "${XDG_CONFIG_HOME:-$HOME/.config}"/nvim
+}
+
+#
+# -------------------
+# Start of Script
+# -------------------
+#
+# Check OS type, then run install function
+if [ -f /etc/os-release ]; then
+  . /etc/os-release
+  case "$ID" in
+    debian|ubuntu)
+      echo "Detected Debian-based system."
+      install_debian
+      install_shell
+      install_neovim
+      exec zsh
+      ;;
+    arch|endeavourOS)
+      echo "Detected Arch-based system."
+      install_arch
+      install_shell
+      install_neovim
+      exec zsh
+      ;;
+    *)
+      echo "Unsupported Linux distribution: $ID"
+      exit 1
+      ;;
+  esac
+else
+  echo "No configuration for installed OS."
+  exit 1
+fi
